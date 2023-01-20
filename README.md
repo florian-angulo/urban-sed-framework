@@ -1,4 +1,6 @@
-#Repository for the ICASSP 2023 submission
+Repository for the paper ''Cosmopolite Sound Monitoring (CoSMo) : a study of urban sound \\ event detection systems generalizing to multiple cities``
 
 
-![Alt text](experiments/figures/logpcenf1_merged.png?raw=True "Comparison of audio frontends when training only on SONYC")
+
+### Comparison of audio frontends when training only on SONYC (extension of Fig. 2 from the paper)
+![Alt text](experiments/figures/logpcenf1_merged.png?raw=True)
