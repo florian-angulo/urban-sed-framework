@@ -1,0 +1,82 @@
+experiment_name: '[0,32,0]_log+pcen'
+training:
+  train_on_fine_taxo: True
+  #batch size: [SGP, SONYC, SGP_unlab]
+  batch_size: [0, 32, 0]
+  batch_size_val: 128
+  # supervised loss weights for [SGP_strong, SONYC_weak, SGP_weak]
+  weight_loss_sup: [0, 1, 0]
+  scheduler_type : "none"
+  const_max: 2 # max weight used for self supervised loss
+  n_steps_warmup: # num steps used for exponential warmup
+  n_epochs_warmup: 30 # num epochs used for exponential warmup
+  num_workers: 6 # change according to your cpu
+  n_epochs: 150 # max num epochs
+  early_stop_patience: 20
+  accumulate_batches: 1
+  gradient_clip: 0 # 0 no gradient clipping
+  median_window: 7 # length of median filter used to smooth prediction in inference (nb of output frames)
+  val_thresholds: [0.5] # thresholds used to compute f1 intersection in validation.
+  n_test_thresholds: 50 # number of thresholds used to compute psds in test
+  ema_factor: 0.999 # ema factor for mean teacher
+  supervised_loss: focal
+  self_sup_loss: mse # bce or mse for self supervised mean teacher loss
+  backend: # pytorch lightning backend, ddp, dp or None
+  limit_train_batches: 142
+  validation_interval: 1 # perform validation every X epoch, 1 default
+  check_train_every_n_epochs: 0 # Evaluate classification metrics on the train set every n epochs, default 10
+  seed: 42
+  mixup: soft # Soft mixup gives the ratio of the mix to the labels, hard mixup gives a 1 to every label present.
+  obj_metric_synth_type: detection
+scaler:
+  statistic: instance # instance or dataset-wide statistic
+  normtype: standard # minmax or standard or mean normalization
+  dims: [2,] # dimensions over which normalization is applied
+  savepath: ./scaler.ckpt # path to scaler checkpoint
+
+opt:
+  name: adam
+  lr: 0.0005
+features:
+  n_mels: 128
+  n_filters: 2048
+  hop_length: 512
+  n_window: 2048
+  sample_rate: 32000
+  f_min: 0
+  f_max: 16000
+  transform_type: log+pcen
+  pcen_trainable: False
+net:
+  dropout: 0.5
+  rnn_layers: 2
+  n_in_channel: 1
+  nclass: 10
+  attention: True
+  n_RNN_cell: 128
+  activation: glu
+  rnn_type: BGRU
+  kernel_size: [3, 3, 3, 3, 3, 3, 3]
+  padding: [1, 1, 1, 1, 1, 1, 1]
+  stride: [1, 1, 1, 1, 1, 1, 1]
+  nb_filters: [ 16, 32, 64, 128, 128, 128, 128]
+  pooling: [ [ 2, 2 ], [ 2, 2 ], [ 1, 2 ], [ 1, 2 ], [ 1, 2 ], [ 1, 2 ], [ 1, 2 ] ]
+  dropout_recurrent: 0
+
+data:
+  audio_max_len: 10
+  fs: 32000
+  net_subsample: 4
+  root_path: # put the root path of the data folder here
+  hdf5_train: "train.h5"
+  hdf5_val: "val.h5"
+  hdf5_test: "test.h5"
+  sonyc_csv_train: "metadata/train/SONYC_train.csv"
+  sonyc_csv_val: "metadata/val/SONYC_val.csv"
+  sonyc_csv_test: "metadata/test/SONYC_test.csv"
+  singa-pura_csv_train: "metadata/train/SINGA-PURA_train.csv"
+  singa-pura_csv_val: "metadata/val/SINGA-PURA_val.csv"
+  singa-pura_csv_test: "metadata/test/SINGA-PURA_test.csv"
+  singa-pura_csv_unlabelled: "metadata/train/SINGA-PURA_unlabelled.csv"
+  taxonomy_path: "/gpfswork/rech/gpz/ufg11lw/Detection-Urban/config/taxonomy_SONYC.yaml"
+
