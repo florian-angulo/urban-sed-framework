@@ -1,4 +1,4 @@
-Repository for the paper ``Cosmopolite Sound Monitoring (CoSMo) : a study of urban sound event detection systems generalizing to multiple cities''
+Repository for the paper ''Cosmopolite Sound Monitoring (CoSMo) : a study of urban sound event detection systems generalizing to multiple cities''
 
 
 
