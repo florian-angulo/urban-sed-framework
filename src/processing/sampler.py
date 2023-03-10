@@ -31,7 +31,9 @@ class ConcatDatasetBatchSampler(Sampler):
         The epoch to start at.
     """
 
-    def __init__(self, samplers, batch_sizes, epoch=0) -> None: # Removed batch_sizes: (list, tuple) until fix
+    def __init__(
+        self, samplers, batch_sizes, epoch=0
+    ) -> None:  # Removed batch_sizes: (list, tuple) until fix
 
         if not isinstance(samplers, (list, tuple)):
             raise ValueError(

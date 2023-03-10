@@ -19,8 +19,14 @@ def nanmean(v, *args, inplace=False, **kwargs):
     v[is_nan] = 0
     return v.sum(*args, **kwargs) / (~is_nan).float().sum(*args, **kwargs)
 
+
 def batched_decode_preds(
-    strong_preds, filenames, encoder, thresholds=[0.5], median_filter=7, pad_idx=None,
+    strong_preds,
+    filenames,
+    encoder,
+    thresholds=[0.5],
+    median_filter=7,
+    pad_idx=None,
 ):
     """Decode a batch of predictions to dataframes. Each threshold gives a different dataframe
     and is stored in a dictionary
@@ -32,17 +38,17 @@ def batched_decode_preds(
         thresholds (list, optional): list of thresholds. Defaults to [0.5].
         median_filter (int, optional): median smoothing window size (in frames). Defaults to 7.
         pad_idx ([type], optional): list of indices which have ben used for padding. Defaults to None.
-    
+
     Returns:
         dict of predictions, each keys is a threshold and the value is the DataFrame of predictions.
     """
-    
+
     # Init a dataframe per threshold
     prediction_dfs = {}
     for threshold in thresholds:
         prediction_dfs[threshold] = pd.DataFrame()
-        
-    for j in range(strong_preds.shape[0]): # over batches
+
+    for j in range(strong_preds.shape[0]):  # over batches
         for c_th in thresholds:
             c_preds = strong_preds[j]
             if pad_idx is not None:
@@ -54,8 +60,10 @@ def batched_decode_preds(
             pred = encoder.decode_strong(pred)
             pred = pd.DataFrame(pred, columns=["event_label", "onset", "offset"])
             pred["filename"] = Path(filenames[j]).stem
-            prediction_dfs[c_th] = pd.concat([prediction_dfs[c_th],pred], ignore_index=True)
-            
+            prediction_dfs[c_th] = pd.concat(
+                [prediction_dfs[c_th], pred], ignore_index=True
+            )
+
     return prediction_dfs
 
 
@@ -68,14 +76,14 @@ def convert_to_event_based(weak_dataframe):
     Returns:
         pd.DataFrame, the dataframe strongly labeled
     """
-    
+
     new = []
     for _, r in weak_dataframe.iterrows():
-        
+
         events = r["events_labels"].split(",")
         for e in events:
             new.append(
-                {"filename": r["filename"], "event_label": e, "onset":0, "offset": 10}
+                {"filename": r["filename"], "event_label": e, "onset": 0, "offset": 10}
             )
     return pd.DataFrame(new)
 
@@ -87,36 +95,37 @@ def log_sedeval_metrics(predictions, gt, save_dir=None):
         predictions (pd.DataFrame): dataframe of predictions
         gt (pd.DataFrame): dataframe of groundtruths
         save_dir ([type], optional): [description]. Defaults to None.
-        
+
     Returns:
         tuple, event-based macro-F1 and micro-F1, segment-based macro-F1 and micro-F1
     """
     if predictions.empty:
         return 0.0, 0.0, 0.0, 0.0
-    
+
     event_res, segment_res = compute_sed_eval_metrics(predictions, gt)
-    
+
     if save_dir is not None:
         os.makedirs(save_dir, exist_ok=True)
         with open(os.path.join(save_dir, "event_f1.txt"), "w") as f:
             f.write(str(event_res))
-        
+
         with open(os.path.join(save_dir, "segment_f1.txt"), "w") as f:
             f.write(str(segment_res))
-        
+
     return (
         event_res.results()["class_wise_average"]["f_measure"]["f_measure"],
         event_res.results()["overall"]["f_measure"]["f_measure"],
         segment_res.results()["class_wise_average"]["f_measure"]["f_measure"],
-        segment_res.results()["overall"]["f_measure"]["f_measure"]
-    )   # return also segment measures
+        segment_res.results()["overall"]["f_measure"]["f_measure"],
+    )  # return also segment measures
+
 
 def get_rescale_matrix(encoder_in, encoder_out):
     """
     This function is used to adapt the time resolution of the one-hot labels stored in the hdf5 files.
     Used when the time resolution of the encoder output (CNN or HEAR encoder) is different than 156 for 10s audio.
     """
-    
+
     if encoder_in.n_frames == encoder_out.n_frames:
         return np.eye((encoder_in.n_frames, encoder_out.n_frames))
     elif encoder_in.n_frames >= encoder_out.n_frames:
@@ -127,16 +136,16 @@ def get_rescale_matrix(encoder_in, encoder_out):
         fine_encoder = encoder_out
         coarse_encoder = encoder_in
         transpose = False
-    
+
     r_matrix = torch.zeros(coarse_encoder.n_frames, fine_encoder.n_frames)
     for i in range(r_matrix.shape[1]):
-        lookup = min(coarse_encoder.n_frames-1,int(coarse_encoder._time_to_frame(fine_encoder._frame_to_time(i))))
+        lookup = min(
+            coarse_encoder.n_frames - 1,
+            int(coarse_encoder._time_to_frame(fine_encoder._frame_to_time(i))),
+        )
         r_matrix[lookup, i] = 1
-    
-    
-    
-    return r_matrix.T if transpose else r_matrix
 
+    return r_matrix.T if transpose else r_matrix
 
 
 def focal_loss(

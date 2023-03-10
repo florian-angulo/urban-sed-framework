@@ -26,7 +26,7 @@ def single_run(
     checkpoint_resume=None,
     test_state_dict=None,
     fast_dev_run=False,
-    evaluation=False,    
+    evaluation=False,
 ):
     """
     Running sound event detection baseline
@@ -48,10 +48,12 @@ def single_run(
     elif "open_l3" in config["net"]["hear_encoder"]:
         hop = 512
     else:
-        raise NotImplementedError(f"encoder {config['net']['hear_encoder']} is not supported")
+        raise NotImplementedError(
+            f"encoder {config['net']['hear_encoder']} is not supported"
+        )
     encoder = ManyHotEncoder(
         taxonomy,
-        use_taxo_fine = config["training"]["train_on_fine_taxo"],
+        use_taxo_fine=config["training"]["train_on_fine_taxo"],
         audio_len=config["data"]["audio_max_len"],
         frame_len=config["features"]["n_filters"],
         frame_hop=hop,
@@ -62,24 +64,36 @@ def single_run(
     config.update({"log_dir": log_dir})
     config["net"].update({"n_class": len(encoder.labels)})
     config.update({"taxonomy": encoder.taxonomy["name"]})
-    
+
     ##### model definition  ############
     sed_hear = HearDetector(**config["net"])
     if test_state_dict is None:
         ##### data prep train valid ##########
-        SINGAPURA_train_set = HDF5_dataset(config["data"]["root_path"] + config["data"]["hdf5_train"],
-                                           "SINGA-PURA", encoder)
-        SONYC_train_set = HDF5_dataset(config["data"]["root_path"] + config["data"]["hdf5_train"],
-                                       "SONYC", encoder)
-        SINGAPURA_val_set = HDF5_dataset(config["data"]["root_path"] + config["data"]["hdf5_val"],
-                                         "SINGA-PURA", encoder)
-        SONYC_val_set = HDF5_dataset(config["data"]["root_path"] + config["data"]["hdf5_val"],
-                                     "SONYC", encoder)
-        SINGAPURA_test_set = HDF5_dataset(config["data"]["root_path"] + config["data"]["hdf5_test"],
-                                          "SINGA-PURA", encoder)
-        SONYC_test_set = HDF5_dataset(config["data"]["root_path"] + config["data"]["hdf5_test"],
-                                      "SONYC", encoder)
-        
+        SINGAPURA_train_set = HDF5_dataset(
+            config["data"]["root_path"] + config["data"]["hdf5_train"],
+            "SINGA-PURA",
+            encoder,
+        )
+        SONYC_train_set = HDF5_dataset(
+            config["data"]["root_path"] + config["data"]["hdf5_train"], "SONYC", encoder
+        )
+        SINGAPURA_val_set = HDF5_dataset(
+            config["data"]["root_path"] + config["data"]["hdf5_val"],
+            "SINGA-PURA",
+            encoder,
+        )
+        SONYC_val_set = HDF5_dataset(
+            config["data"]["root_path"] + config["data"]["hdf5_val"], "SONYC", encoder
+        )
+        SINGAPURA_test_set = HDF5_dataset(
+            config["data"]["root_path"] + config["data"]["hdf5_test"],
+            "SINGA-PURA",
+            encoder,
+        )
+        SONYC_test_set = HDF5_dataset(
+            config["data"]["root_path"] + config["data"]["hdf5_test"], "SONYC", encoder
+        )
+
         batch_sizes = config["training"]["batch_size"]
         bs = []
         tot_train_data = []
@@ -89,16 +103,31 @@ def single_run(
         if batch_sizes[1] > 0:
             tot_train_data.append(SONYC_train_set)
             bs.append(batch_sizes[1])
-        
-        train_dataset = ConcatDatasetUrban(tot_train_data, encoder, batch_sizes=batch_sizes, hear_encoder=config["net"]["hear_encoder"])
+
+        train_dataset = ConcatDatasetUrban(
+            tot_train_data,
+            encoder,
+            batch_sizes=batch_sizes,
+            hear_encoder=config["net"]["hear_encoder"],
+        )
         samplers = [torch.utils.data.RandomSampler(x) for x in tot_train_data]
         batch_sampler = ConcatDatasetBatchSampler(samplers, bs)
 
-        valid_dataset = ConcatDatasetUrban([SINGAPURA_val_set, SONYC_val_set], encoder, [config["training"]["batch_size_val"]], hear_encoder=config["net"]["hear_encoder"])
+        valid_dataset = ConcatDatasetUrban(
+            [SINGAPURA_val_set, SONYC_val_set],
+            encoder,
+            [config["training"]["batch_size_val"]],
+            hear_encoder=config["net"]["hear_encoder"],
+        )
 
-        test_dataset = ConcatDatasetUrban([SINGAPURA_test_set, SONYC_test_set], encoder, [config["training"]["batch_size_val"]], hear_encoder=config["net"]["hear_encoder"], analyse_proximity=True)
-        
-        
+        test_dataset = ConcatDatasetUrban(
+            [SINGAPURA_test_set, SONYC_test_set],
+            encoder,
+            [config["training"]["batch_size_val"]],
+            hear_encoder=config["net"]["hear_encoder"],
+            analyse_proximity=True,
+        )
+
         ##### training params and optimizers ############
         if config["opt"]["name"] == "MADGRAD":
             opt = madgrad.MADGRAD(sed_hear.parameters(), lr=config["opt"]["lr"])
@@ -107,13 +136,11 @@ def single_run(
 
         print(os.path.dirname(config["log_dir"]), config["log_dir"].split("/")[-1])
         logger = TensorBoardLogger(
-            os.path.dirname(config["log_dir"]),
-            name=config["experiment_name"]
+            os.path.dirname(config["log_dir"]), name=config["experiment_name"]
         )
         logger.log_hyperparams(config)
         print(f"experiment dir: {logger.log_dir}")
-        
-        
+
         callbacks = [
             EarlyStopping(
                 monitor="Val/obj_metric",
@@ -162,12 +189,16 @@ def single_run(
     else:
         flush_logs_every_n_steps = 100
         log_every_n_steps = 40
-        limit_train_batches = int(config["training"].get("limit_train_batches")*32/np.max(config["training"]["batch_size"][:2]))
+        limit_train_batches = int(
+            config["training"].get("limit_train_batches")
+            * 32
+            / np.max(config["training"]["batch_size"][:2])
+        )
         limit_val_batches = 1.0
         limit_test_batches = 1.0
         n_epochs = config["training"]["n_epochs"]
 
-    torch.backends.cudnn.benchmark = True 
+    torch.backends.cudnn.benchmark = True
     trainer = pl.Trainer(
         max_epochs=n_epochs,
         callbacks=callbacks,
@@ -233,11 +264,9 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--eval_from_checkpoint",
-        default=None,
-        help="Evaluate the model specified"
+        "--eval_from_checkpoint", default=None, help="Evaluate the model specified"
     )
-    
+
     args = parser.parse_args()
 
     with open(args.conf_file, "r") as f:
@@ -245,14 +274,14 @@ if __name__ == "__main__":
 
     with open(args.taxonomy, "r") as f:
         taxonomy = yaml.safe_load(f)
-    
-    evaluation = False 
+
+    evaluation = False
     test_from_checkpoint = args.test_from_checkpoint
 
     if args.eval_from_checkpoint is not None:
         test_from_checkpoint = args.eval_from_checkpoint
         evaluation = True
-    
+
     test_model_state_dict = None
     if test_from_checkpoint is not None:
         checkpoint = torch.load(test_from_checkpoint)
@@ -266,9 +295,9 @@ if __name__ == "__main__":
 
     if evaluation:
         config["training"]["batch_size_val"] = 1
-    
-    seed = config["training"]["seed"]*26
-    config["training"].update({"seed":seed})
+
+    seed = config["training"]["seed"] * 26
+    config["training"].update({"seed": seed})
     if seed:
         torch.random.manual_seed(seed)
         np.random.seed(seed)

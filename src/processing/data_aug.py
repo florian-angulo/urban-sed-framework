@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import random
 
+
 def frame_shift(mels, labels, net_pooling=4):
     bsz, n_bands, frames = mels.shape
     shifted = []
@@ -52,7 +53,7 @@ def mixup(data, target=None, alpha=0.2, beta=0.2, mixup_label_type="soft"):
 
 
 def add_noise(mels, snrs=(10, 30), dims=(1, 2)):
-    """ Add white noise to mels spectrograms
+    """Add white noise to mels spectrograms
     Args:
         mels: torch.tensor, mels spectrograms to apply the white noise to.
         snrs: int or tuple, the range of snrs to choose from if tuple (uniform)

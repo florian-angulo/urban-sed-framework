@@ -29,7 +29,7 @@ def get_event_list_current_file(df, fname):
 
 
 def psds_results(psds_obj):
-    """ Compute psds scores
+    """Compute psds scores
     Args:
         psds_obj: psds_eval.PSDSEval object with operating points.
     Returns:
@@ -49,7 +49,7 @@ def psds_results(psds_obj):
 def event_based_evaluation_df(
     reference, estimated, t_collar=0.200, percentage_of_length=0.2
 ):
-    """ Calculate EventBasedMetric given a reference and estimated dataframe
+    """Calculate EventBasedMetric given a reference and estimated dataframe
 
     Args:
         reference: pd.DataFrame containing "filename" "onset" "offset" and "event_label" columns which describe the
@@ -93,17 +93,17 @@ def event_based_evaluation_df(
 
 
 def segment_based_evaluation_df(reference, estimated, time_resolution=1.0):
-    """ Calculate SegmentBasedMetrics given a reference and estimated dataframe
+    """Calculate SegmentBasedMetrics given a reference and estimated dataframe
 
-        Args:
-            reference: pd.DataFrame containing "filename" "onset" "offset" and "event_label" columns which describe the
-                reference events
-            estimated: pd.DataFrame containing "filename" "onset" "offset" and "event_label" columns which describe the
-                estimated events to be compared with reference
-            time_resolution: float, the time resolution of the segment based metric
-        Returns:
-             sed_eval.sound_event.SegmentBasedMetrics with the scores
-        """
+    Args:
+        reference: pd.DataFrame containing "filename" "onset" "offset" and "event_label" columns which describe the
+            reference events
+        estimated: pd.DataFrame containing "filename" "onset" "offset" and "event_label" columns which describe the
+            estimated events to be compared with reference
+        time_resolution: float, the time resolution of the segment based metric
+    Returns:
+         sed_eval.sound_event.SegmentBasedMetrics with the scores
+    """
     evaluated_files = reference["filename"].unique()
 
     classes = []
@@ -132,7 +132,7 @@ def segment_based_evaluation_df(reference, estimated, time_resolution=1.0):
 
 
 def compute_sed_eval_metrics(predictions, groundtruth):
-    """ Compute sed_eval metrics event based and segment based with default parameters used in the task.
+    """Compute sed_eval metrics event based and segment based with default parameters used in the task.
     Args:
         predictions: pd.DataFrame, predictions dataframe
         groundtruth: pd.DataFrame, groundtruth dataframe
@@ -157,7 +157,7 @@ def compute_per_intersection_macro_f1(
     gtc_threshold=0.5,
     cttc_threshold=0.3,
 ):
-    """ Compute F1-score per intersection, using the defautl
+    """Compute F1-score per intersection, using the defautl
     Args:
         prediction_dfs: dict, a dictionary with thresholds keys and predictions dataframe
         ground_truth_file: pd.DataFrame, the groundtruth dataframe
@@ -243,39 +243,56 @@ def compute_psds_from_operating_points(
             psds_score,
             filename=os.path.join(save_dir, f"PSDS_ct{alpha_ct}_st{alpha_st}_100.png"),
         )
-        
+
         class_names = psds_eval.class_names
 
-        tpr_vs_fpr_lin, _, _ = psds_eval.psd_roc_curves(alpha_ct=0.)
-        plot_per_class_psd_roc(tpr_vs_fpr_lin, class_names, filename=os.path.join(save_dir, f"per-class TPR vs FPR PSDROC.png"), title="per-class TPR vs FPR PSDROC", xlabel="FPR", xlim=100)
-        
-    
+        tpr_vs_fpr_lin, _, _ = psds_eval.psd_roc_curves(alpha_ct=0.0)
+        plot_per_class_psd_roc(
+            tpr_vs_fpr_lin,
+            class_names,
+            filename=os.path.join(save_dir, f"per-class TPR vs FPR PSDROC.png"),
+            title="per-class TPR vs FPR PSDROC",
+            xlabel="FPR",
+            xlim=100,
+        )
+
     # Recover some of the operating points for each class based on f1-score
     class_constraints = list()
     # find the op. point with maximum f1-score for the fourth class
     for c_name in psds_eval.class_names:
         if c_name == "injected_psds_world_label":
             continue
-        class_constraints.append({"class_name": c_name,
-                                "constraint": "fscore",
-                                "value": None})
+        class_constraints.append(
+            {"class_name": c_name, "constraint": "fscore", "value": None}
+        )
     class_constraints_table = pd.DataFrame(class_constraints)
     selected_ops = psds_eval.select_operating_points_per_class(
-        class_constraints_table, alpha_ct=1., beta=1.)
+        class_constraints_table, alpha_ct=1.0, beta=1.0
+    )
 
-    with open(os.path.join(save_dir, f"best_operating_points_per_class(PSDS_ct{alpha_ct}_st{alpha_st}_100).txt"), 'w') as textfile:
+    with open(
+        os.path.join(
+            save_dir,
+            f"best_operating_points_per_class(PSDS_ct{alpha_ct}_st{alpha_st}_100).txt",
+        ),
+        "w",
+    ) as textfile:
         for k in range(len(class_constraints)):
-            textfile.writelines([
-                f"\n\nFor class {class_constraints_table.class_name[k]}, the best "
-                f"op. point with {class_constraints_table.constraint[k]} ~ "
-                f"{class_constraints_table.value[k]}:"
-                ])
-            textfile.writelines([
-                f"\tProbability Threshold: {selected_ops.threshold[k]}, "
-                f"TPR: {selected_ops.TPR[k]:.2f}, "
-                f"FPR: {selected_ops.FPR[k]:.2f}, "
-                f"eFPR: {selected_ops.eFPR[k]:.2f}, "
-                f"F1-score: {selected_ops.Fscore[k]:.2f}"
-                ])
-    
+            textfile.writelines(
+                [
+                    f"\n\nFor class {class_constraints_table.class_name[k]}, the best "
+                    f"op. point with {class_constraints_table.constraint[k]} ~ "
+                    f"{class_constraints_table.value[k]}:"
+                ]
+            )
+            textfile.writelines(
+                [
+                    f"\tProbability Threshold: {selected_ops.threshold[k]}, "
+                    f"TPR: {selected_ops.TPR[k]:.2f}, "
+                    f"FPR: {selected_ops.FPR[k]:.2f}, "
+                    f"eFPR: {selected_ops.eFPR[k]:.2f}, "
+                    f"F1-score: {selected_ops.Fscore[k]:.2f}"
+                ]
+            )
+
     return psds_score.value

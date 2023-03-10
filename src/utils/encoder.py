@@ -2,8 +2,9 @@ import numpy as np
 import pandas as pd
 import torch
 
+
 class ManyHotEncoder:
-    """"
+    """ "
         Adapted after DecisionEncoder.find_contiguous_regions method in
         https://github.com/DCASE-REPO/dcase_util/blob/master/dcase_util/data/decisions.py
 
@@ -18,20 +19,26 @@ class ManyHotEncoder:
     """
 
     def __init__(
-        self, taxonomy, use_taxo_fine, audio_len, frame_len, frame_hop, net_pooling=1, fs=32000
+        self,
+        taxonomy,
+        use_taxo_fine,
+        audio_len,
+        frame_len,
+        frame_hop,
+        net_pooling=1,
+        fs=32000,
     ):
 
-        
         self.taxonomy_coarse = taxonomy["coarse"]
         self.taxonomy_fine = taxonomy["fine"]
-        
+
         if use_taxo_fine:
             self.taxonomy = self.taxonomy_fine
             labels = self.taxonomy["class_labels"]
         else:
             self.taxonomy = self.taxonomy_coarse
             labels = self.taxonomy["class_labels"]
-        
+
         if type(labels) in [np.ndarray, np.array]:
             labels = labels.tolist()
 
@@ -46,8 +53,9 @@ class ManyHotEncoder:
         #     int(((n_frames - self.frame_len) / self.frame_hop)) / self.net_pooling
         # )
         self.n_frames = int(int((n_frames / self.frame_hop)) / self.net_pooling)
-        self.ftc_matrix = torch.tensor(self.compute_fine_to_coarse_matrix())#, device="cuda:0")
-
+        self.ftc_matrix = torch.tensor(
+            self.compute_fine_to_coarse_matrix()
+        )  # , device="cuda:0")
 
     def compute_fine_to_coarse_matrix(self):
         classes_fine = self.taxonomy_fine["class_labels"]
@@ -61,7 +69,7 @@ class ManyHotEncoder:
             c_coarse = self.taxonomy_coarse["SONYC"][k]
             idx_fine = classes_fine.index(c_fine)
             idx_coarse = classes_coarse.index(c_coarse)
-            
+
             t_matrix[idx_fine, idx_coarse] = 1
 
         for k in self.taxonomy_fine["SINGA-PURA"].keys():
@@ -71,9 +79,9 @@ class ManyHotEncoder:
                 continue
             idx_fine = classes_fine.index(c_fine)
             idx_coarse = classes_coarse.index(c_coarse)
-            
+
             t_matrix[idx_fine, idx_coarse] = 1
-        
+
         return t_matrix
 
     def fine_to_coarse(self, prob):
@@ -88,17 +96,28 @@ class ManyHotEncoder:
         """
 
         if prob.dim() == 3:
-            return torch.max(prob.transpose(1,2)[:,:,:,None]*self.ftc_matrix.to(prob),axis=-2,keepdims=True).values.squeeze(-2).transpose(1,2)
+            return (
+                torch.max(
+                    prob.transpose(1, 2)[:, :, :, None] * self.ftc_matrix.to(prob),
+                    axis=-2,
+                    keepdims=True,
+                )
+                .values.squeeze(-2)
+                .transpose(1, 2)
+            )
         elif prob.dim() == 2:
-            return torch.max(prob[:,:,None]*self.ftc_matrix.to(prob),axis=-2,keepdims=True).values.squeeze(-2)
-        
+            return torch.max(
+                prob[:, :, None] * self.ftc_matrix.to(prob), axis=-2, keepdims=True
+            ).values.squeeze(-2)
 
     def convert_label_fine_to_coarse(self, label):
         idx_fine = self.taxonomy_fine["class_labels"].index(label)
-        return self.taxonomy_coarse["class_labels"][(np.where(self.ftc_matrix[idx_fine])[0][0])]
-    
+        return self.taxonomy_coarse["class_labels"][
+            (np.where(self.ftc_matrix[idx_fine])[0][0])
+        ]
+
     def encode_weak(self, labels, dset):
-        """ Encode a list of weak labels into a numpy array
+        """Encode a list of weak labels into a numpy array
 
         Args:
             labels: list, list of labels to encode (to a vector of 0 and 1)
@@ -107,7 +126,7 @@ class ManyHotEncoder:
             numpy.array
             A vector containing 1 for each label, and 0 everywhere else
         """
-        
+
         # Convert into the unified taxonomy label
         labels = list(map(lambda label: self.taxonomy[dset][label], labels))
         y = np.zeros(len(self.labels))
@@ -143,7 +162,7 @@ class ManyHotEncoder:
         )
 
         samples_len = self.n_frames
-        #if type(label_df) is str:
+        # if type(label_df) is str:
         #    if label_df == "empty":
         #        y = np.zeros((samples_len, len(self.labels))) - 1
         #        return y
@@ -152,7 +171,10 @@ class ManyHotEncoder:
             if {"onset", "offset", "event_label"}.issubset(label_df.columns):
                 for _, row in label_df.iterrows():
                     unified_label = self.taxonomy[dset][row["event_label"]]
-                    if not pd.isna(row["event_label"]) and unified_label != "no-annotation":
+                    if (
+                        not pd.isna(row["event_label"])
+                        and unified_label != "no-annotation"
+                    ):
                         i = self.labels.index(unified_label)
                         onset = int(self._time_to_frame(row["onset"]))
                         offset = int(np.ceil(self._time_to_frame(row["offset"])))
@@ -168,7 +190,7 @@ class ManyHotEncoder:
         return y
 
     def decode_weak(self, labels):
-        """ Decode the encoded weak labels
+        """Decode the encoded weak labels
         Args:
             labels: numpy.array, the encoded labels to be decoded
 
@@ -184,7 +206,7 @@ class ManyHotEncoder:
         return result_labels
 
     def decode_strong(self, labels, taxo_level=None):
-        """ Decode the encoded strong labels
+        """Decode the encoded strong labels
         Args:
             labels: numpy.array, the encoded labels to be decoded
         Returns:
@@ -232,7 +254,9 @@ class ManyHotEncoder:
         """
 
         # Find the changes in the activity_array
-        change_indices = np.logical_xor(activity_array[1:], activity_array[:-1]).nonzero()[0]
+        change_indices = np.logical_xor(
+            activity_array[1:], activity_array[:-1]
+        ).nonzero()[0]
 
         # Shift change_index with one, focus on frame after the change.
         change_indices += 1
@@ -248,7 +272,6 @@ class ManyHotEncoder:
         # Reshape the result into two columns
         return change_indices.reshape((-1, 2))
 
-    
     def state_dict(self):
         return {
             "labels": self.labels,
