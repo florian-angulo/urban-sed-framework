@@ -15,7 +15,6 @@ torchaudio.set_audio_backend("sox_io")
 from torchaudio.transforms import AmplitudeToDB, MelSpectrogram
 from processing.data_aug import mixup, add_noise
 from utils.scaler import TorchScaler
-from loguru import logger as lg
 import warnings
 from utils.utils import batched_decode_preds, log_sedeval_metrics, focal_loss
 from utils.evaluation_measures import (

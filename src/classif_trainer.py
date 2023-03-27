@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pdF
 import pytorch_lightning as pl
 import torch
-from loguru import logger as lg
 from utils.utils import (
     batched_decode_preds,
     log_sedeval_metrics,
@@ -20,8 +19,6 @@ from utils.evaluation_measures import (
     compute_psds_from_operating_points,
 )
 
-
-@lg.catch
 class HearTrainer(pl.LightningModule):
     """Pytorch lightning module for the SED 2021 baseline
     Args:
