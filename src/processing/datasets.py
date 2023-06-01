@@ -7,9 +7,7 @@ import h5py
 
 class ConcatDatasetUrban(torch.utils.data.ConcatDataset):
     # Expanding the ConcatDataset class with a collate function
-    def __init__(
-        self, datasets, encoder, batch_sizes, n_samples=320000, analyse_proximity=False
-    ):
+    def __init__(self, datasets, encoder, batch_sizes, n_samples=320000, analyse_proximity=False):
         super().__init__(datasets)
         self.batch_sizes = batch_sizes
         self.n_samples = n_samples
@@ -57,14 +55,10 @@ class ConcatDatasetUrban(torch.utils.data.ConcatDataset):
 
         if "test" in self.hdf5_path:
             group_name_gt_SGP = (
-                "groundtruth_with_proximity"
-                if self.analyse_proximity
-                else "groundtruth"
+                "groundtruth_with_proximity" if self.analyse_proximity else "groundtruth"
             )
             group_name_gt_SONYC = (
-                "groundtruth_with_proximity_perso"
-                if self.analyse_proximity
-                else "groundtruth"
+                "groundtruth_with_proximity" if self.analyse_proximity else "groundtruth"
             )
         else:
             group_name_gt_SGP = "groundtruth"
@@ -73,9 +67,7 @@ class ConcatDatasetUrban(torch.utils.data.ConcatDataset):
         if len(self.batch_sizes) > 1:
             indx_strong, indx_weak, indx_unlabelled = self.batch_sizes
 
-            audio = np.zeros(
-                (indx_strong + indx_weak + indx_unlabelled, self.n_samples)
-            )
+            audio = np.zeros((indx_strong + indx_weak + indx_unlabelled, self.n_samples))
             labels = np.zeros(
                 (
                     indx_strong + indx_weak + indx_unlabelled,
@@ -89,32 +81,26 @@ class ConcatDatasetUrban(torch.utils.data.ConcatDataset):
                 audio[:indx_strong] = self.hdf5["SINGA-PURA"]["audio_32k"][
                     np.sort(indices[:indx_strong])
                 ]
-                labels[:indx_strong] = self.hdf5["SINGA-PURA"]["groundtruth"][
-                    self.taxo_name
-                ][np.sort(indices[:indx_strong])]
-                filenames[:indx_strong] = filenames[:indx_strong][
-                    sort_order_strong.astype(int)
+                labels[:indx_strong] = self.hdf5["SINGA-PURA"]["groundtruth"][self.taxo_name][
+                    np.sort(indices[:indx_strong])
                 ]
+                filenames[:indx_strong] = filenames[:indx_strong][sort_order_strong.astype(int)]
             if indx_weak > 0:
-                sort_order_weak = np.argsort(
-                    indices[indx_strong : indx_strong + indx_weak]
-                )
-                audio[indx_strong : indx_strong + indx_weak] = self.hdf5["SONYC"][
-                    "audio_32k"
-                ][np.sort(indices[indx_strong : indx_strong + indx_weak])]
-                labels[indx_strong : indx_strong + indx_weak, :, 0] = self.hdf5[
-                    "SONYC"
-                ]["groundtruth"][self.taxo_name][
+                sort_order_weak = np.argsort(indices[indx_strong : indx_strong + indx_weak])
+                audio[indx_strong : indx_strong + indx_weak] = self.hdf5["SONYC"]["audio_32k"][
                     np.sort(indices[indx_strong : indx_strong + indx_weak])
                 ]
+                labels[indx_strong : indx_strong + indx_weak, :, 0] = self.hdf5["SONYC"][
+                    "groundtruth"
+                ][self.taxo_name][np.sort(indices[indx_strong : indx_strong + indx_weak])]
                 filenames[indx_strong : indx_strong + indx_weak] = filenames[
                     indx_strong : indx_strong + indx_weak
                 ][sort_order_weak.astype(int)]
             if indx_unlabelled > 0:
                 sort_order_unlab = np.argsort(indices[-indx_unlabelled:])
-                audio[-indx_unlabelled:] = self.hdf5["unlabelled_SINGA-PURA"][
-                    "audio_32k"
-                ][np.sort(indices[-indx_unlabelled:])]
+                audio[-indx_unlabelled:] = self.hdf5["unlabelled_SINGA-PURA"]["audio_32k"][
+                    np.sort(indices[-indx_unlabelled:])
+                ]
                 filenames[-indx_unlabelled:] = filenames[-indx_unlabelled:][
                     sort_order_unlab.astype(int)
                 ]
@@ -138,9 +124,9 @@ class ConcatDatasetUrban(torch.utils.data.ConcatDataset):
                 audio[:n_SINGAPURA] = self.hdf5["SINGA-PURA"]["audio_32k"][
                     indices_SINGAPURA[sort_order_SINGAPURA.astype(int)]
                 ]
-                labels[:n_SINGAPURA] = self.hdf5["SINGA-PURA"][group_name_gt_SGP][
-                    self.taxo_name
-                ][indices_SINGAPURA[sort_order_SINGAPURA.astype(int)]]
+                labels[:n_SINGAPURA] = self.hdf5["SINGA-PURA"][group_name_gt_SGP][self.taxo_name][
+                    indices_SINGAPURA[sort_order_SINGAPURA.astype(int)]
+                ]
                 filenames[:n_SINGAPURA] = mem_filenames[~np.array(from_SONYC)][
                     sort_order_SINGAPURA.astype(int)
                 ]
@@ -152,9 +138,7 @@ class ConcatDatasetUrban(torch.utils.data.ConcatDataset):
                 labels[n_SINGAPURA:, :, 0] = self.hdf5["SONYC"][group_name_gt_SONYC][
                     self.taxo_name
                 ][indices_SONYC[sort_order_SONYC.astype(int)]]
-                filenames[n_SINGAPURA:] = mem_filenames[from_SONYC][
-                    sort_order_SONYC.astype(int)
-                ]
+                filenames[n_SINGAPURA:] = mem_filenames[from_SONYC][sort_order_SONYC.astype(int)]
 
         # Centering audio
         audio -= np.mean(audio, axis=(1,), keepdims=True)
@@ -206,9 +190,7 @@ class HDF5_dataset(Dataset):
             {"filename": self.filenames, "duration": [10.0] * len(self.ids)}
         )
         # generate groundtruth dataframe with unified taxonomy
-        groundtruths = pd.DataFrame(
-            columns=["filename", "onset", "offset", "event_label"]
-        )
+        groundtruths = pd.DataFrame(columns=["filename", "onset", "offset", "event_label"])
         filenames = []
         filenames_monoph = []
         filenames_lowpolyph = []
@@ -217,9 +199,7 @@ class HDF5_dataset(Dataset):
         onsets = []
         offsets = []
         for i, fname in enumerate(self.filenames):
-            labels = hf["SINGA-PURA"]["groundtruth"][encoder.taxonomy_coarse["name"]][
-                self.ids[i]
-            ]
+            labels = hf["SINGA-PURA"]["groundtruth"][encoder.taxonomy_coarse["name"]][self.ids[i]]
             polyphony = np.max(np.sum(labels, axis=0))
             if polyphony == 1:
                 filenames_monoph.append(fname)
@@ -244,9 +224,7 @@ class HDF5_dataset(Dataset):
             }
         )
 
-        self.groundtruths_monoph = groundtruths[
-            groundtruths["filename"].isin(filenames_monoph)
-        ]
+        self.groundtruths_monoph = groundtruths[groundtruths["filename"].isin(filenames_monoph)]
         self.groundtruths_lowpolyph = groundtruths[
             groundtruths["filename"].isin(filenames_lowpolyph)
         ]
@@ -281,7 +259,6 @@ class HDF5_dataset(Dataset):
             offsets_far = []
 
             for i, fname in enumerate(self.filenames):
-
                 # near events
                 labels = hf["SINGA-PURA"]["groundtruth_with_proximity"][
                     encoder.taxonomy_coarse["name"]
