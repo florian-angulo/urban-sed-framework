@@ -99,9 +99,7 @@ class CoSMo_benchmark(pl.LightningModule):
         )
 
         # Frequency Masking as in SpecAugment
-        self.frequency_masking = torchaudio.transforms.FrequencyMasking(
-            freq_mask_param=48
-        )
+        self.frequency_masking = torchaudio.transforms.FrequencyMasking(freq_mask_param=48)
 
         # Per-Channel Energy Normalization
         # self.pcen = sb.nnet.normalization.PCEN(input_size=feat_params["n_mels"], trainable = feat_params["pcen_trainable"], per_channel_smooth_coef = feat_params["pcen_trainable"])
@@ -244,14 +242,10 @@ class CoSMo_benchmark(pl.LightningModule):
         # prevent zero initial-energy assumption for pcen
         if transform_type == "pcen":
             audio_scaled = audio * (2**31 / audio.abs().max(axis=1, keepdims=True)[0])
-            audio_padded = torch.concat(
-                [torch.flip(audio_scaled, dims=(1,)), audio_scaled], dim=1
-            )
+            audio_padded = torch.concat([torch.flip(audio_scaled, dims=(1,)), audio_scaled], dim=1)
             mels = self.mel_spec(audio_padded)
             n_frames = mels.shape[-1]
-            return self.pcen(mels.transpose(1, 2)).transpose(1, 2)[
-                :, :, n_frames // 2 :
-            ]
+            return self.pcen(mels.transpose(1, 2)).transpose(1, 2)[:, :, n_frames // 2 :]
         elif transform_type == "log":
             mels = self.mel_spec(audio)
             return torch.log(1e-5 + c * mels)
@@ -292,9 +286,7 @@ class CoSMo_benchmark(pl.LightningModule):
             ".*Trying to infer the `batch_size` from an ambiguous collection.*",
         )
         warnings.filterwarnings("ignore", ".*invalid value encountered in true_divide*")
-        warnings.filterwarnings(
-            "ignore", ".*Average precision score for one or more classes*"
-        )
+        warnings.filterwarnings("ignore", ".*Average precision score for one or more classes*")
         warnings.filterwarnings("ignore", ".*No positive samples in targets,*")
 
         warnings.filterwarnings("ignore", ".*which may be a bottleneck.*")
@@ -357,27 +349,17 @@ class CoSMo_benchmark(pl.LightningModule):
             mels_stud[mask_unlab_SGP] = add_noise(mels_stud[mask_unlab_SGP])
 
             # sed student forward
-            strong_preds_student, weak_preds_student = self.detect(
-                mels_stud, self.sed_student
-            )
+            strong_preds_student, weak_preds_student = self.detect(mels_stud, self.sed_student)
         else:
             # sed student forward
-            strong_preds_student, weak_preds_student = self.detect(
-                mels, self.sed_student
-            )
+            strong_preds_student, weak_preds_student = self.detect(mels, self.sed_student)
 
         # supervised loss on strong labels
-        loss_strong = self.supervised_loss(
-            strong_preds_student[mask_SGP], labels_strong_SGP
-        )
+        loss_strong = self.supervised_loss(strong_preds_student[mask_SGP], labels_strong_SGP)
         # supervised loss on weakly labelled
-        loss_weak = self.supervised_loss(
-            weak_preds_student[mask_SONYC], labels_weak_SONYC
-        )
+        loss_weak = self.supervised_loss(weak_preds_student[mask_SONYC], labels_weak_SONYC)
         # supervised loss on strongly labelled turned into weakly
-        loss_weakstrong = self.supervised_loss(
-            weak_preds_student[mask_SGP], labels_weak_SGP
-        )
+        loss_weakstrong = self.supervised_loss(weak_preds_student[mask_SGP], labels_weak_SGP)
         # total supervised loss
         tot_loss_supervised = (
             loss_strong.nan_to_num() * self.weight_loss_sup[0]
@@ -389,9 +371,7 @@ class CoSMo_benchmark(pl.LightningModule):
             if self.noisy:
                 mels[mask_unlab_SGP] = add_noise(mels[mask_unlab_SGP])
 
-            strong_preds_teacher, weak_preds_teacher = self.detect(
-                mels, self.sed_teacher
-            )
+            strong_preds_teacher, weak_preds_teacher = self.detect(mels, self.sed_teacher)
             loss_strong_teacher = self.supervised_loss(
                 strong_preds_teacher[mask_SGP], labels_strong_SGP
             )
@@ -407,19 +387,11 @@ class CoSMo_benchmark(pl.LightningModule):
         # we apply consistency between the predictions
         weight = self.hparams["training"]["const_max"] * self.get_MT_scaling_factor()
 
-        selfsup_loss_strong = self.selfsup_loss(
-            strong_preds_student, strong_preds_teacher.detach()
-        )
-        selfsup_loss_weak = self.selfsup_loss(
-            weak_preds_student, weak_preds_teacher.detach()
-        )
-        tot_self_loss = (
-            selfsup_loss_strong.nan_to_num() + selfsup_loss_weak.nan_to_num()
-        )
+        selfsup_loss_strong = self.selfsup_loss(strong_preds_student, strong_preds_teacher.detach())
+        selfsup_loss_weak = self.selfsup_loss(weak_preds_student, weak_preds_teacher.detach())
+        tot_self_loss = selfsup_loss_strong.nan_to_num() + selfsup_loss_weak.nan_to_num()
 
-        tot_loss = (
-            tot_loss_supervised.nan_to_num() + tot_self_loss.nan_to_num() * weight
-        )
+        tot_loss = tot_loss_supervised.nan_to_num() + tot_self_loss.nan_to_num() * weight
 
         self.log("Train/loss_strong_SGP_student", loss_strong.detach())
         self.log("Train/loss_weak_SGP_student", loss_weakstrong.detach())
@@ -430,9 +402,7 @@ class CoSMo_benchmark(pl.LightningModule):
         self.log("Train/step", float(self.global_step), prog_bar=True)
         self.log("Train/tot_self_loss", tot_self_loss.detach(), prog_bar=True)
         self.log("Train/weight", weight)
-        self.log(
-            "Train/tot_loss_supervised", tot_loss_supervised.detach(), prog_bar=True
-        )
+        self.log("Train/tot_loss_supervised", tot_loss_supervised.detach(), prog_bar=True)
         self.log("Train/selfsup_loss_weak", selfsup_loss_weak.detach())
         self.log("Train/selfsup_loss_strong", selfsup_loss_strong.detach())
         self.log("Train/lr", self.opt.param_groups[-1]["lr"], prog_bar=True)
@@ -443,10 +413,8 @@ class CoSMo_benchmark(pl.LightningModule):
         if (
             self.hparams["training"]["check_train_every_n_epochs"] > 0
             and not mixup_applied
-            and self.current_epoch
-            % self.hparams["training"]["check_train_every_n_epochs"]
+            and self.current_epoch % self.hparams["training"]["check_train_every_n_epochs"]
         ):
-
             # Convert predictions and groundtruths to the coarse taxonomy
             if self.hparams["training"]["train_on_fine_taxo"]:
                 strong_preds_student = self.encoder.fine_to_coarse(strong_preds_student)
@@ -469,10 +437,8 @@ class CoSMo_benchmark(pl.LightningModule):
         # If mixup is used, evaluation is not meaningful
         if (
             self.hparams["training"]["check_train_every_n_epochs"] > 0
-            and self.current_epoch
-            % self.hparams["training"]["check_train_every_n_epochs"]
+            and self.current_epoch % self.hparams["training"]["check_train_every_n_epochs"]
         ):
-
             self.compute_metrics(
                 "Train",
                 self.train_data.datasets,
@@ -504,14 +470,10 @@ class CoSMo_benchmark(pl.LightningModule):
 
         # we derive masks for each dataset based on filenames
         mask_SONYC = (
-            torch.tensor([x[0] != "[" for x in filenames], device=self.device)
-            .detach()
-            .bool()
+            torch.tensor([x[0] != "[" for x in filenames], device=self.device).detach().bool()
         )
         mask_SGP = (
-            torch.tensor([x[0] == "[" for x in filenames], device=self.device)
-            .detach()
-            .bool()
+            torch.tensor([x[0] == "[" for x in filenames], device=self.device).detach().bool()
         )
         # no unlabeled example but mask needed as an input for the scaler
         mask_unlab = torch.zeros(mask_SGP.shape, device=self.device).bool()
@@ -524,7 +486,6 @@ class CoSMo_benchmark(pl.LightningModule):
         strong_preds_teacher, weak_preds_teacher = self.detect(mels, self.sed_teacher)
 
         if torch.any(mask_SONYC):
-
             labels_weak_SONYC = (torch.sum(labels[mask_SONYC], -1) >= 1).float()
             loss_weak_student = self.supervised_loss(
                 weak_preds_student[mask_SONYC], labels_weak_SONYC
@@ -617,13 +578,9 @@ class CoSMo_benchmark(pl.LightningModule):
         labels_weak_far = torch.max(labels_far, -1)[0].float()
 
         # we derive masks for each dataset based on filenames
-        mask_SONYC = torch.tensor(
-            [x[0] != "[" for x in filenames], device=self.device
-        ).bool()
+        mask_SONYC = torch.tensor([x[0] != "[" for x in filenames], device=self.device).bool()
         mask_SGP = (
-            torch.tensor([x[0] == "[" for x in filenames], device=self.device)
-            .detach()
-            .bool()
+            torch.tensor([x[0] == "[" for x in filenames], device=self.device).detach().bool()
         )
         # needed for scaler
         mask_unlab = torch.zeros(mask_SGP.shape, device=self.device).bool()
@@ -641,12 +598,8 @@ class CoSMo_benchmark(pl.LightningModule):
         labels_far = labels_far * torch.logical_not(labels_near)
         labels_near = labels_near * torch.logical_not(labels_far)
 
-        weak_preds_student_near = weak_preds_student * torch.logical_not(
-            labels_weak_far
-        )
-        weak_preds_student_far = weak_preds_student * torch.logical_not(
-            labels_weak_near
-        )
+        weak_preds_student_near = weak_preds_student * torch.logical_not(labels_weak_far)
+        weak_preds_student_far = weak_preds_student * torch.logical_not(labels_weak_near)
         labels_weak_far = labels_weak_far * torch.logical_not(labels_weak_near)
         labels_weak_near = labels_weak_near * torch.logical_not(labels_weak_far)
 
@@ -693,16 +646,10 @@ class CoSMo_benchmark(pl.LightningModule):
         # Convert predictions and groundtruths to the coarse taxonomy
         if self.hparams["training"]["train_on_fine_taxo"]:
             strong_preds_student = self.encoder.fine_to_coarse(strong_preds_student)
-            strong_preds_student_near = self.encoder.fine_to_coarse(
-                strong_preds_student_near
-            )
-            strong_preds_student_far = self.encoder.fine_to_coarse(
-                strong_preds_student_far
-            )
+            strong_preds_student_near = self.encoder.fine_to_coarse(strong_preds_student_near)
+            strong_preds_student_far = self.encoder.fine_to_coarse(strong_preds_student_far)
             weak_preds_student = self.encoder.fine_to_coarse(weak_preds_student)
-            weak_preds_student_near = self.encoder.fine_to_coarse(
-                weak_preds_student_near
-            )
+            weak_preds_student_near = self.encoder.fine_to_coarse(weak_preds_student_near)
             weak_preds_student_far = self.encoder.fine_to_coarse(weak_preds_student_far)
             labels_near = self.encoder.fine_to_coarse(labels_near)
             labels_far = self.encoder.fine_to_coarse(labels_far)
@@ -813,7 +760,6 @@ class CoSMo_benchmark(pl.LightningModule):
                 )
 
         if torch.any(mask_SGP):
-
             filenames_strong = [x for x in filenames if x[0] == "["]
 
             # compute psds
@@ -888,9 +834,7 @@ class CoSMo_benchmark(pl.LightningModule):
             save_dir=os.path.join(save_dir, "scenario2"),
         )
 
-        best_test_result = torch.tensor(
-            max(psds_score_scenario1, psds_score_scenario2)
-        ).detach()
+        best_test_result = torch.tensor(max(psds_score_scenario1, psds_score_scenario2)).detach()
 
         results = {
             "hp_metric": best_test_result,
@@ -945,9 +889,7 @@ class CoSMo_benchmark(pl.LightningModule):
                 save_dir,
             )
 
-            self.log(
-                f"Test/strong_SGP_{subset}_intersection_f1_macro", intersection_f1_macro
-            )
+            self.log(f"Test/strong_SGP_{subset}_intersection_f1_macro", intersection_f1_macro)
             self.log(f"Test/strong_SGP_{subset}_event_f1_macro", event_f1_macro)
             self.log(f"Test/strong_SGP_{subset}_event_f1_micro", event_f1_micro)
             self.log(f"Test/strong_SGP_{subset}_segment_f1_macro", segment_f1_macro)
@@ -955,9 +897,7 @@ class CoSMo_benchmark(pl.LightningModule):
 
         # save dict of metrics per instance
         self.df_metrics_sgp.to_csv(os.path.join(save_dir, "stats_SGP.csv"), index=False)
-        self.df_metrics_sonyc.to_csv(
-            os.path.join(save_dir, "stats_SONYC.csv"), index=False
-        )
+        self.df_metrics_sonyc.to_csv(os.path.join(save_dir, "stats_SONYC.csv"), index=False)
 
         self.reset_metrics("Test")
         self.weak_metrics["Test"]["SGP_near"].reset()
@@ -981,7 +921,6 @@ class CoSMo_benchmark(pl.LightningModule):
         optimizer.zero_grad(set_to_none=True)
 
     def train_dataloader(self):
-
         self.train_loader = torch.utils.data.DataLoader(
             self.train_data,
             batch_sampler=self.train_sampler,
@@ -1020,7 +959,6 @@ class CoSMo_benchmark(pl.LightningModule):
     def update_metrics(
         self, split, strong_preds, weak_preds, labels, filenames, mask_SGP, mask_SONYC
     ):
-
         labels_weak = torch.max(labels, -1)[0].float()
         if torch.any(mask_SONYC):
             # accumulate metrics for weak labels SONYC
@@ -1141,18 +1079,14 @@ class CoSMo_benchmark(pl.LightningModule):
                     )
 
                     # Add preds to buffer
-                    filenames_monoph = filenames[mask_SGP.cpu().numpy()][
-                        mask_monoph.cpu().numpy()
-                    ]
+                    filenames_monoph = filenames[mask_SGP.cpu().numpy()][mask_monoph.cpu().numpy()]
 
                     decoded_student_strong = batched_decode_preds(
                         strong_preds[mask_SGP][mask_monoph],
                         filenames_monoph,
                         self.encoder,
                         median_filter=self.hparams["training"]["median_window"],
-                        thresholds=list(
-                            self.strong_preds_buffers["Test_monoph"].keys()
-                        ),
+                        thresholds=list(self.strong_preds_buffers["Test_monoph"].keys()),
                     )
 
                     for th in self.strong_preds_buffers["Test_monoph"].keys():
@@ -1191,9 +1125,7 @@ class CoSMo_benchmark(pl.LightningModule):
                         filenames_lowpolyph,
                         self.encoder,
                         median_filter=self.hparams["training"]["median_window"],
-                        thresholds=list(
-                            self.strong_preds_buffers["Test_lowpolyph"].keys()
-                        ),
+                        thresholds=list(self.strong_preds_buffers["Test_lowpolyph"].keys()),
                     )
 
                     for th in self.strong_preds_buffers["Test_lowpolyph"].keys():
@@ -1231,9 +1163,7 @@ class CoSMo_benchmark(pl.LightningModule):
                         filenames_highpolyph,
                         self.encoder,
                         median_filter=self.hparams["training"]["median_window"],
-                        thresholds=list(
-                            self.strong_preds_buffers["Test_highpolyph"].keys()
-                        ),
+                        thresholds=list(self.strong_preds_buffers["Test_highpolyph"].keys()),
                     )
 
                     for th in self.strong_preds_buffers["Test_highpolyph"].keys():
@@ -1282,9 +1212,7 @@ class CoSMo_benchmark(pl.LightningModule):
                     {k: v.cpu().numpy() for k, v in result.items()},
                     index=self.encoder.taxonomy_coarse["class_labels"],
                 )
-                result_df.to_csv(
-                    os.path.join(save_dir, key + ".csv"), float_format="%.2f"
-                )
+                result_df.to_csv(os.path.join(save_dir, key + ".csv"), float_format="%.2f")
 
         if bs_SGP > 0:
             # compute strong metrics
@@ -1305,13 +1233,8 @@ class CoSMo_benchmark(pl.LightningModule):
                 save_dir,
             )
 
-            obj_metric_strong_type = self.hparams["training"].get(
-                "obj_metric_strong_type"
-            )
-            if (
-                obj_metric_strong_type is None
-                or obj_metric_strong_type == "intersection_macro"
-            ):
+            obj_metric_strong_type = self.hparams["training"].get("obj_metric_strong_type")
+            if obj_metric_strong_type is None or obj_metric_strong_type == "intersection_macro":
                 strong_metric = intersection_f1_macro
             elif obj_metric_strong_type == "event_macro":
                 strong_metric = event_f1_macro
@@ -1326,10 +1249,7 @@ class CoSMo_benchmark(pl.LightningModule):
                     f"obj_metric_strong_type: {obj_metric_strong_type} not implemented."
                 )
 
-            if (
-                self.hparams["training"]["batch_size"][0] > 0
-                and self.weight_loss_sup[0] > 0
-            ):
+            if self.hparams["training"]["batch_size"][0] > 0 and self.weight_loss_sup[0] > 0:
                 obj_metric += strong_metric
 
             self.log(f"{split}/obj_metric", obj_metric)
@@ -1344,57 +1264,62 @@ class CoSMo_benchmark(pl.LightningModule):
 
         num_classes = len(self.encoder.taxonomy_coarse["class_labels"])
         f1_micro = torchmetrics.F1Score(
-            num_classes=num_classes, average="micro", threshold=0.5
+            task="multilabel", num_labels=num_classes, average="micro", threshold=0.5
         )
 
         f1_macro = torchmetrics.F1Score(
-            num_classes=num_classes, average="macro", threshold=0.5
+            task="multilabel", num_labels=num_classes, average="macro", threshold=0.5
         )
 
         f1_none = torchmetrics.F1Score(
-            num_classes=num_classes, average="none", threshold=0.5
+            task="multilabel", num_labels=num_classes, average="none", threshold=0.5
         )
 
         prec_micro = torchmetrics.Precision(
-            num_classes=num_classes, average="micro", threshold=0.5
+            task="multilabel", num_labels=num_classes, average="micro", threshold=0.5
         )
 
         prec_macro = torchmetrics.Precision(
-            num_classes=num_classes, average="macro", threshold=0.5
+            task="multilabel", num_labels=num_classes, average="macro", threshold=0.5
         )
 
         prec_none = torchmetrics.Precision(
-            num_classes=num_classes, average="none", threshold=0.5
+            task="multilabel", num_labels=num_classes, average="none", threshold=0.5
         )
 
         rec_micro = torchmetrics.Recall(
-            num_classes=num_classes, average="micro", threshold=0.5
+            task="multilabel", num_labels=num_classes, average="micro", threshold=0.5
         )
 
         rec_macro = torchmetrics.Recall(
-            num_classes=num_classes, average="macro", threshold=0.5
+            task="multilabel", num_labels=num_classes, average="macro", threshold=0.5
         )
 
         rec_none = torchmetrics.Recall(
-            num_classes=num_classes, average="none", threshold=0.5
+            task="multilabel", num_labels=num_classes, average="none", threshold=0.5
         )
 
         ap_micro = torchmetrics.AveragePrecision(
-            num_classes=num_classes,
+            task="multilabel",
+            num_labels=num_classes,
             average="micro",
         )
 
         ap_macro = torchmetrics.AveragePrecision(
-            num_classes=num_classes,
+            task="multilabel",
+            num_labels=num_classes,
             average="macro",
         )
 
         ap_none = torchmetrics.AveragePrecision(
-            num_classes=num_classes,
+            task="multilabel",
+            num_labels=num_classes,
             average="none",
         )
 
-        label_ranking = torchmetrics.LabelRankingAveragePrecision()
+        label_ranking = torchmetrics.classification.MultilabelRankingAveragePrecision(
+            num_labels=num_classes
+        )
 
         weak_metrics = torchmetrics.MetricCollection(
             {
@@ -1455,18 +1380,12 @@ class CoSMo_benchmark(pl.LightningModule):
                 prefix=f"{split}/weak_SONYC_highpolyph_"
             )
 
-        self.weak_metrics["Test"]["SGP_near"] = weak_metrics.clone(
-            prefix=f"Test/weak_SGP_near_"
-        )
+        self.weak_metrics["Test"]["SGP_near"] = weak_metrics.clone(prefix=f"Test/weak_SGP_near_")
         self.weak_metrics["Test"]["SONYC_near"] = weak_metrics.clone(
             prefix=f"Test/weak_SONYC_near_"
         )
-        self.weak_metrics["Test"]["SGP_far"] = weak_metrics.clone(
-            prefix=f"Test/weak_SGP_far_"
-        )
-        self.weak_metrics["Test"]["SONYC_far"] = weak_metrics.clone(
-            prefix=f"Test/weak_SONYC_far_"
-        )
+        self.weak_metrics["Test"]["SGP_far"] = weak_metrics.clone(prefix=f"Test/weak_SGP_far_")
+        self.weak_metrics["Test"]["SONYC_far"] = weak_metrics.clone(prefix=f"Test/weak_SONYC_far_")
 
         self.weak_metrics_by_class = torch.nn.ModuleDict()
         self.weak_metrics_by_class["SGP_all"] = weak_metrics_by_class.clone()
@@ -1483,9 +1402,7 @@ class CoSMo_benchmark(pl.LightningModule):
         self.weak_metrics_by_class["SONYC_far"] = weak_metrics_by_class.clone()
 
         # buffer for event based scores which we compute using sed-eval
-        self.sed_buffer = {
-            k: pd.DataFrame() for k in self.hparams["training"]["val_thresholds"]
-        }
+        self.sed_buffer = {k: pd.DataFrame() for k in self.hparams["training"]["val_thresholds"]}
 
         self.strong_preds_buffers = {
             split: deepcopy(self.sed_buffer)
@@ -1501,12 +1418,8 @@ class CoSMo_benchmark(pl.LightningModule):
             ]
         }
         test_n_thresholds = self.hparams["training"]["n_test_thresholds"]
-        test_thresholds = np.arange(
-            1 / (test_n_thresholds * 2), 1, 1 / test_n_thresholds
-        )
-        self.strong_preds_buffers["test_psds"] = {
-            k: pd.DataFrame() for k in test_thresholds
-        }
+        test_thresholds = np.arange(1 / (test_n_thresholds * 2), 1, 1 / test_n_thresholds)
+        self.strong_preds_buffers["test_psds"] = {k: pd.DataFrame() for k in test_thresholds}
 
         # Dictionnary for sample-level statistics of our metrics
         self.df_metrics_sonyc = pd.DataFrame(
@@ -1556,6 +1469,4 @@ class CoSMo_benchmark(pl.LightningModule):
                 [self.df_metrics_sonyc, pd.DataFrame.from_records(rows)]
             )
         elif dset == "SGP":
-            self.df_metrics_sgp = pd.concat(
-                [self.df_metrics_sgp, pd.DataFrame.from_records(rows)]
-            )
+            self.df_metrics_sgp = pd.concat([self.df_metrics_sgp, pd.DataFrame.from_records(rows)])
